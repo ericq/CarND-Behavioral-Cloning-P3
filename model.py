@@ -12,13 +12,23 @@ from keras.layers.convolutional import Conv2D
 from keras.layers.pooling import MaxPooling2D
 
 
-DATA_DIR_LIST=['../behavior-clone-training-data/1/']
+## 
+DATA_DIR_LIST=['../behavior-clone-training-data/1/',
+        '../behavior-clone-training-data/2/']
 
+# use left-cam as training img, 
+#steering =  add this value to the current steer 
+LEFT_CAM_ADJ = 0.3   
+
+# use right-cam as training img, 
+#steering =  add this value to the current steer 
+RIGHT_CAM_ADJ = -0.3  
 
 images = []
 measurements=[]
 
 ## Load data. support multiple input data dir
+
 for DATA_DIR in DATA_DIR_LIST:
     assert os.path.isdir(DATA_DIR), "data folder exists"
 
@@ -33,13 +43,29 @@ for DATA_DIR in DATA_DIR_LIST:
 
     for line in lines:
         source_path = line[0]
+        source_path_leftcam = line[1]
+        source_path_rightcam = line[2]
         #filename = source_path.split('/')[-1] #BUG here, does not work for windows system
         filename = os.path.basename(source_path)
+        filename_leftcam = os.path.basename(source_path_leftcam)
+        filename_rightcam = os.path.basename(source_path_rightcam)
+
         current_path = DATA_DIR+'IMG/' + filename
+        current_path_leftcam = DATA_DIR+'IMG/' + filename_leftcam
+        current_path_rightcam = DATA_DIR+'IMG/' + filename_rightcam
+
         image = cv2.imread(current_path)
         images.append(image)
         measurement = float(line[3])
         measurements.append(measurement)
+
+        image_leftcam = cv2.imread(current_path_leftcam)
+        images.append(image_leftcam)
+        measurements.append(measurement+LEFT_CAM_ADJ)
+
+        image_rightcam = cv2.imread(current_path_rightcam)
+        images.append(image_rightcam)
+        measurements.append(measurement+RIGHT_CAM_ADJ)
 
 
 #Augment the images
@@ -136,7 +162,7 @@ img_channels = 3
 
 
 batch_size = 16
-nb_epoch = 2 
+nb_epoch = 2
 
 model = create_model(img_rows, img_cols, img_channels )
 

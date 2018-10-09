@@ -1,0 +1,97 @@
+import csv
+import cv2
+import numpy as np
+
+from inceptionv4  import inception_v4_base
+
+from keras import backend as K
+from keras.layers.convolutional import MaxPooling2D, Convolution2D, AveragePooling2D
+from keras.layers import Input, Dropout, Dense, Flatten, Activation
+from keras.models import Model
+
+DATA_DIR='./data/1/'
+
+lines = []
+with open (DATA_DIR+'driving_log.csv') as csvfile:
+    reader = csv.reader(csvfile)
+    for line in reader:
+        lines.append(line)
+
+images = []
+measurements=[]
+
+
+for line in lines:
+    source_path = line[0]
+    filename = source_path.split('/')[-1]
+    current_path = DATA_DIR+'IMG/' + filename
+    image = cv2.imread(current_path)
+    images.append(image)
+    measurement = float(line[3])
+    measurements.append(measurement)
+
+
+X_train = np.array(images)
+y_train = np.array(measurements)
+
+
+def car_inception_v4(img_rows, img_cols, img_channels, dropout_keep_prob ):
+    '''
+    Creates the inception v4 network
+
+    Args:
+        img_rows: number of rows (height)
+        img_cols: number of columns (width)
+        img_channels: number of channels
+    	dropout_keep_prob: float, the fraction to keep before final layer.
+
+    Returns:
+    	logits: the logits outputs of the model.
+    '''
+
+    if K.image_data_format() == 'channels_first':
+        inputs = Input((img_channels, img_rows, img_cols))
+    else:
+        inputs = Input((img_rows, img_cols,img_channels))
+
+    # Make inception base
+    x = inception_v4_base(inputs)
+
+    # not a classificatin problem, do nothing to add another top layer
+
+    model = Model(inputs, x, name='inception_v4')
+
+    return model
+
+
+def create_model(img_rows, img_cols, img_channels=3, dropout_prob=0.2):
+    return car_inception_v4(img_rows, img_cols, img_channels, dropout_prob)
+
+
+img_rows = 160 # resolution of inputs
+img_cols = 320 # Resolution of inputs
+img_channels = 3
+
+
+batch_size = 16
+nb_epoch = 10
+
+model = create_model(img_rows, img_cols, img_channels )
+
+# Learning rate is changed to 0.001
+model.compile(optimizer='adam', loss='mse')
+
+# Start Fine-tuning
+model.fit(X_train, y_train,
+          batch_size=batch_size,
+          nb_epoch=nb_epoch,
+          validation_split=0.2,
+          shuffle=True
+         )
+
+
+model.save('model.h5')
+
+
+    
+    

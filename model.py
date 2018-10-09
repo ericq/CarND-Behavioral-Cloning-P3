@@ -1,41 +1,71 @@
 import csv
 import cv2
 import numpy as np
+import os.path
 
 
 # Setup Keras
 from keras import backend as K
 from keras.models import Sequential
-from keras.layers.core import Dense, Activation, Flatten, Dropout, Lambda
+from keras.layers import Dense, Activation, Flatten, Dropout, Lambda, Cropping2D
 from keras.layers.convolutional import Conv2D
 from keras.layers.pooling import MaxPooling2D
 
 
-DATA_DIR='./data/1/'
+DATA_DIR_LIST=['../behavior-clone-training-data/1/']
 
-lines = []
-with open (DATA_DIR+'driving_log.csv') as csvfile:
-    reader = csv.reader(csvfile)
-    for line in reader:
-        lines.append(line)
 
 images = []
 measurements=[]
 
+## Load data. support multiple input data dir
+for DATA_DIR in DATA_DIR_LIST:
+    assert os.path.isdir(DATA_DIR), "data folder exists"
 
-for line in lines:
-    source_path = line[0]
-    filename = source_path.split('/')[-1]
-    current_path = DATA_DIR+'IMG/' + filename
-    image = cv2.imread(current_path)
-    images.append(image)
-    measurement = float(line[3])
-    measurements.append(measurement)
+    lines = []
+    driving_log = DATA_DIR+'driving_log.csv'
+    assert os.path.isfile(driving_log), "driver log exists"
+
+    with open (driving_log) as csvfile:
+        reader = csv.reader(csvfile)
+        for line in reader:
+            lines.append(line)
+
+    for line in lines:
+        source_path = line[0]
+        #filename = source_path.split('/')[-1] #BUG here, does not work for windows system
+        filename = os.path.basename(source_path)
+        current_path = DATA_DIR+'IMG/' + filename
+        image = cv2.imread(current_path)
+        images.append(image)
+        measurement = float(line[3])
+        measurements.append(measurement)
 
 
-X_train = np.array(images)
-y_train = np.array(measurements)
+#Augment the images
+augmented_images, augmented_measurements = [], []
+for image, measurement in zip(images, measurements):
+    augmented_images.append(image)
+    augmented_measurements.append(measurement)
+    augmented_images.append(cv2.flip(image,1))
+    augmented_measurements.append(measurement*-1.0)
 
+X_train = np.array(augmented_images)
+assert len(X_train.shape) == 4, "X_train shape has 4 elements"
+print(X_train.shape)
+
+y_train = np.array(augmented_measurements)
+print(y_train.shape)
+assert len(y_train.shape) == 1, "y_train shape has 1 element"
+
+
+#Augment the images
+augmented_images, augmented_measurements = [], []
+for image, measurement in zip(images, measurements):
+    augmented_images.append(image)
+    augmented_measurements.append(measurement)
+    augmented_images.append(cv2.flip(image,1))
+    augmented_measurements.append(measurement*-1.0)
 
 def car_lenet(img_rows, img_cols, img_channels, dropout_keep_prob ):
     '''
@@ -57,7 +87,12 @@ def car_lenet(img_rows, img_cols, img_channels, dropout_keep_prob ):
 
 
     model = Sequential()
+
+    ## Pre-process 
+    # normalize
     model.add(Lambda(lambda x: x/255.0 - 0.5, input_shape=input_shape))
+    # cropping
+    model.add(Cropping2D(cropping=((70,25),(0,0))))
 
     activation="relu"
 
@@ -101,7 +136,7 @@ img_channels = 3
 
 
 batch_size = 16
-nb_epoch = 10
+nb_epoch = 2 
 
 model = create_model(img_rows, img_cols, img_channels )
 

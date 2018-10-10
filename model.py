@@ -14,15 +14,20 @@ from keras.layers.pooling import MaxPooling2D
 
 ## 
 DATA_DIR_LIST=['../behavior-clone-training-data/1/',
-        '../behavior-clone-training-data/2/']
+        '../behavior-clone-training-data/2/',
+        '../behavior-clone-training-data/3/',
+        '../behavior-clone-training-data/4/',
+        '../behavior-clone-training-data/5/',
+        '../behavior-clone-training-data/6/',
+        '../behavior-clone-training-data/7/']
 
 # use left-cam as training img, 
 #steering =  add this value to the current steer 
-LEFT_CAM_ADJ = 0.3   
+LEFT_CAM_ADJ = 0.2   
 
 # use right-cam as training img, 
 #steering =  add this value to the current steer 
-RIGHT_CAM_ADJ = -0.3  
+RIGHT_CAM_ADJ = -0.2  
 
 images = []
 measurements=[]
@@ -161,7 +166,7 @@ img_cols = 320 # Resolution of inputs
 img_channels = 3
 
 
-batch_size = 16
+batch_size = 64 
 nb_epoch = 2
 
 model = create_model(img_rows, img_cols, img_channels )

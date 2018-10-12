@@ -3,3 +3,6 @@ data
 __pycache__/
 model.h5*
 Sandbox*
+run1/
+*.swp
+*.bak

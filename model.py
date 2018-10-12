@@ -3,6 +3,8 @@ import cv2
 import numpy as np
 import os.path
 
+import sklearn
+from sklearn.model_selection import train_test_split
 
 # Setup Keras
 from keras import backend as K
@@ -12,14 +14,13 @@ from keras.layers.convolutional import Conv2D
 from keras.layers.pooling import MaxPooling2D
 
 
-## 
-DATA_DIR_LIST=['../behavior-clone-training-data/1/',
-        '../behavior-clone-training-data/2/',
-        '../behavior-clone-training-data/3/',
-        '../behavior-clone-training-data/4/',
-        '../behavior-clone-training-data/5/',
-        '../behavior-clone-training-data/6/',
-        '../behavior-clone-training-data/7/']
+## Input data are stored under sub-directories. 
+# so concatenate sub-directory into one dataset
+#
+ROOT_DATA_DIR = '../behavior-clone-training-data/'
+
+#sub-set data dir want to process
+SUBSET_DATA_DIR_LIST=['1/','2/','3/','4/','5/','6/','7/'] 
 
 # use left-cam as training img, 
 #steering =  add this value to the current steer 
@@ -29,88 +30,109 @@ LEFT_CAM_ADJ = 0.2
 #steering =  add this value to the current steer 
 RIGHT_CAM_ADJ = -0.2  
 
-images = []
-measurements=[]
+# convert file names in the driving log csv to new file name
+# this is because the simulator files might be copied to 
+# different nodes. <root data dir>/<sub>/IMG/<img files>
+# 
+# input args:
+#    fn_in_log: file name in log
+#    new_root: new root directories
+def getNewImgFn(fn_in_log, new_root):
+    (pdir, fname) = os.path.split(fn_in_log)
+    (pdir, up1) = os.path.split(pdir)
+    (_,up2) = os.path.split(pdir)
 
-## Load data. support multiple input data dir
+    return os.path.join( ROOT_DATA_DIR,up2,up1,fname )
+# Concatenate driving.log from all sub-direcotries into one
+# lines will contain all driving-log
+driving_log_lines = [] # contains tuple (img_name, angle)
 
-for DATA_DIR in DATA_DIR_LIST:
-    assert os.path.isdir(DATA_DIR), "data folder exists"
+for subdir in SUBSET_DATA_DIR_LIST:
+    datadir = ROOT_DATA_DIR + subdir
+    assert os.path.isdir(datadir), "data folder exists"
 
-    lines = []
-    driving_log = DATA_DIR+'driving_log.csv'
+    driving_log = datadir +'driving_log.csv'
     assert os.path.isfile(driving_log), "driver log exists"
 
+    subt = 0
     with open (driving_log) as csvfile:
         reader = csv.reader(csvfile)
         for line in reader:
-            lines.append(line)
+            # center camera
+            driving_log_lines.append( (getNewImgFn(line[0],ROOT_DATA_DIR),
+                    float(line[3])) )
+            # left camera
+            driving_log_lines.append( (getNewImgFn(line[1],ROOT_DATA_DIR),
+                    float(line[3]) + LEFT_CAM_ADJ) )
+            # right camera
+            driving_log_lines.append( (getNewImgFn(line[2],ROOT_DATA_DIR),
+                    float(line[3]) + RIGHT_CAM_ADJ) )
+            subt += 1
+    print("Read " + str(subt)+ " records from " + driving_log)
 
-    for line in lines:
-        source_path = line[0]
-        source_path_leftcam = line[1]
-        source_path_rightcam = line[2]
-        #filename = source_path.split('/')[-1] #BUG here, does not work for windows system
-        filename = os.path.basename(source_path)
-        filename_leftcam = os.path.basename(source_path_leftcam)
-        filename_rightcam = os.path.basename(source_path_rightcam)
-
-        current_path = DATA_DIR+'IMG/' + filename
-        current_path_leftcam = DATA_DIR+'IMG/' + filename_leftcam
-        current_path_rightcam = DATA_DIR+'IMG/' + filename_rightcam
-
-        image = cv2.imread(current_path)
-        images.append(image)
-        measurement = float(line[3])
-        measurements.append(measurement)
-
-        image_leftcam = cv2.imread(current_path_leftcam)
-        images.append(image_leftcam)
-        measurements.append(measurement+LEFT_CAM_ADJ)
-
-        image_rightcam = cv2.imread(current_path_rightcam)
-        images.append(image_rightcam)
-        measurements.append(measurement+RIGHT_CAM_ADJ)
+print("read total " + str(len(driving_log_lines)) +" driving records");
 
 
-#Augment the images
-augmented_images, augmented_measurements = [], []
-for image, measurement in zip(images, measurements):
-    augmented_images.append(image)
-    augmented_measurements.append(measurement)
-    augmented_images.append(cv2.flip(image,1))
-    augmented_measurements.append(measurement*-1.0)
+# Generator to deal with large amount of data
+# input args:
+#   sampes - collection of driving record enntries
+#   batch_log_size- size of those logs will be processed as one batch
+#                   note that many(6) records generated from one log
+def generator(samples, batch_log_size=32):
+    print("entering...")
+    num_samples = len(samples)
+    print("received "+str(num_samples)+" records")
 
-X_train = np.array(augmented_images)
-assert len(X_train.shape) == 4, "X_train shape has 4 elements"
-print(X_train.shape)
+    while 1: # Loop forever so the generator never terminates
+        samples = sklearn.utils.shuffle(samples)
+        for offset in range(0, num_samples, batch_log_size):
+            batch_samples = samples[offset:offset+batch_log_size]
 
-y_train = np.array(augmented_measurements)
-print(y_train.shape)
-assert len(y_train.shape) == 1, "y_train shape has 1 element"
+            images = []
+            angles = []
+            for batch_sample in batch_samples:
+
+                # Read center camera; also add a flipped one
+                ic = cv2.imread(batch_sample[0])
+                ac = batch_sample[1]
+
+                images.append(ic) 
+                angles.append(ac)
+                images.append(cv2.flip(ic,1))
+                angles.append( ac*-1.0 ) 
+
+            # trim image to only see section with road
+            X_train = np.array(images)
+            assert len(X_train.shape) == 4, "X_train shape has 4 elements"
+            y_train = np.array(angles)
+            assert len(y_train.shape) == 1, "y_train shape has 1 element"
+            X_train, y_train = sklearn.utils.shuffle(X_train, y_train)
+            yield ( X_train, y_train)
+
+'''
+for i in range(1):
+    a,b = next (generator(driving_log_lines))
+    print(b)
+    print('+++++++++++++')
+print('test gen stop')
+'''
 
 
-#Augment the images
-augmented_images, augmented_measurements = [], []
-for image, measurement in zip(images, measurements):
-    augmented_images.append(image)
-    augmented_measurements.append(measurement)
-    augmented_images.append(cv2.flip(image,1))
-    augmented_measurements.append(measurement*-1.0)
+##
+#    Creates the lenet
+
+#    Args:
+#        img_rows: number of rows (height)
+#        img_cols: number of columns (width)
+#        img_channels: number of channels
+#    	dropout_keep_prob: float, the fraction to keep before final layer.
+#
+#    Returns:
+#    	logits: the logits outputs of the model.
+
 
 def car_lenet(img_rows, img_cols, img_channels, dropout_keep_prob ):
-    '''
-    Creates the lenet
-
-    Args:
-        img_rows: number of rows (height)
-        img_cols: number of columns (width)
-        img_channels: number of channels
-    	dropout_keep_prob: float, the fraction to keep before final layer.
-
-    Returns:
-    	logits: the logits outputs of the model.
-    '''
+    
     if K.image_data_format() == 'channels_first':
         input_shape = (img_channels, img_rows, img_cols)
     else:
@@ -165,9 +187,15 @@ img_rows = 160 # resolution of inputs
 img_cols = 320 # Resolution of inputs
 img_channels = 3
 
-
-batch_size = 64 
+batch_log_size = 32 # 2X
 nb_epoch = 2
+
+train_samples, validation_samples = train_test_split(driving_log_lines, 
+                                                    test_size=0.2)
+
+# NOTE: acutal number fed into training is 6 * batch_size
+train_generator = generator(train_samples, batch_log_size=batch_log_size)
+validation_generator = generator(validation_samples, batch_log_size=batch_log_size)
 
 model = create_model(img_rows, img_cols, img_channels )
 
@@ -175,16 +203,14 @@ model = create_model(img_rows, img_cols, img_channels )
 model.compile(optimizer='adam', loss='mse')
 
 # Start Fine-tuning
-model.fit(X_train, y_train,
-          batch_size=batch_size,
-          nb_epoch=nb_epoch,
-          validation_split=0.2,
-          shuffle=True
-         )
-
+# steps_per_epoch: Integer. Total number of steps (batches of samples) to yield 
+# from generator before declaring one epoch finished and starting the next epoch. 
+# It should typically be equal to the number of samples of your dataset divided 
+# by the batch size
+model.fit_generator(train_generator,
+                    steps_per_epoch = len(train_samples) / batch_log_size,
+                    validation_data=validation_generator, 
+                    validation_steps= len(validation_samples) / batch_log_size,
+                    epochs=nb_epoch)
 
 model.save('model.h5')
-
-
-    
-    

@@ -1,8 +1,9 @@
 data
 .ipynb_checkpoints/
 __pycache__/
-model.h5*
+model.h5.*
 Sandbox*
 run1/
+run2/
 *.swp
 *.bak

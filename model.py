@@ -24,11 +24,11 @@ SUBSET_DATA_DIR_LIST=['1/','2/','3/','4/','5/','6/','7/']
 
 # use left-cam as training img, 
 #steering =  add this value to the current steer 
-LEFT_CAM_ADJ = 0.2   
+LEFT_CAM_ADJ = 0.35   
 
 # use right-cam as training img, 
 #steering =  add this value to the current steer 
-RIGHT_CAM_ADJ = -0.2  
+RIGHT_CAM_ADJ = -0.35  
 
 # convert file names in the driving log csv to new file name
 # this is because the simulator files might be copied to 

@@ -2,6 +2,9 @@
 
 [![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
 
+The Write Up report is availabl here: https://github.com/ericq/CarND-Behavioral-Cloning-P3/blob/master/writeup_report.md
+A related GitHub repository of all training data is available here: https://github.com/ericq/behavior-clone-training-data
+
 Overview
 ---
 This repository contains starting files for the Behavioral Cloning Project.
@@ -122,8 +125,4 @@ Will run the video at 48 FPS. The default FPS is 60.
 
 ## How to write a README
 A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
-
-loss: 0.0402
-
-loss: 0.19 
 

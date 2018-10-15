@@ -44,12 +44,12 @@ The model.py file contains the code for training and saving the convolution neur
 
 My model (line 134 of model.py) consists of the following:
 1. pre-processing set:
-..* a normalization layer using Keras lambda to translate image RBG value to 0 and 1.0 with a mean value of 0.0. (line 146)
-..* Further process the images by cropping top and bottom parts that are not helping the training. (line 148)
+  1. a normalization layer using Keras lambda to translate image RGB value to 0 and 1.0 with a mean value of 0.0. (line 146)
+  2. Further process the images by cropping top and bottom parts that are not helping the training. (line 148)
 2. first set of convolution layer with the following:
-..* a convolution neural network with 20 filter value and kernel size of 5 (model.py lines 153); 
-..* followed by a layers to introduce nonlinearity (code line 154)
-..* A maxPoling layer with pool size 2x2 and strides 2x2
+  1. a convolution neural network with 20 filter value and kernel size of 5 (model.py lines 153); 
+  2. followed by a layers to introduce nonlinearity (code line 154)
+  3. A maxPoling layer with pool size 2x2 and strides 2x2
 3. second set of convolution layer by repeating the first set
 4. add three full connected dense layers. (line 168, 173, 177)
 
@@ -67,14 +67,14 @@ The model used an adam optimizer, so the learning rate was not tuned manually (m
 #### 4. Appropriate training data
 I stored the training data in this github repository: https://github.com/ericq/behavior-clone-training-data
 
-Training data was chosen to keep the vehicle driving on the road. I have used multiple laps of training data: 
-lap1 - trained from udacity workspace, slow response to key controls but ok with low speed
-lap 2 - trained from local simulator (windows env), pay attention to the image path in windows format generated in the csv file. higher speed
-lap 3 - no steering as much as possible, then sharp correction before hit the edge
-lap 4 - run the bridge and the last half lap 3 times
-lap 5 - teach how to drive back to the center.  Still weaving back and forth between the middle of the road and the shoulder, but you need to turn off data recording when you weave out to the side, and turn it back on when you steer back to the middle.
-lap 6 - post-bridge track back-n-forth
-lap 7 - smooth drive in the center
+Traing data was chosen to keep the vehicle driving on the road. I have used multiple laps of training data: 
+1. Trained from udacity workspace, slow response to key controls but ok with low speed
+2. Trained from local simulator (windows env), pay attention to the image path in windows format generated in the csv file. higher speed
+3. No steering as much as possible, then sharp correction before hit the edge
+4. Run through the bridge and the last half lap 3 times
+5. Teach how to drive back to the center.  Still weaving back and forth between the middle of the road and the shoulder, but you need to turn off data recording when you weave out to the side, and turn it back on when you steer back to the middle.
+6. Post-bridge track back-n-forth. There is sharp turns.
+7. mooth drive in the center
 
 
 ### Model Architecture and Training Strategy
@@ -105,6 +105,8 @@ Since I noticed that the data are very much concentrated on the steering angle a
 
 Line 193 shows how to use sklearn train_test_split() function.
 
+#### 3. Creation of the Training Set & Training Process
+Generator is used per the requirement so that we can train the model without very large amount of data. code line 81. I also noticed a bug in the project instruction. The instruction assumes Keras 1 code can continue to be used in Keras 2. However, Keras 2 steps_per_epoch means something different - total number of steps (batches of samples) to yield from generator before declaring one epoch finished and starting the next epoch. It should typically be equal to the number of samples of your dataset divided by the batch size. In Keras 1, total number of samples per epoch is used instead.
 
-
-
+## Refelections and notes:
+The final output model can make the car drive smoothly in the track1. However, further improvement can be made to drive at high speed in track 1. The current model does not work in track 2. This can be mitigated by adding track 2 training data. A much more sophisticated model might be needed then.
